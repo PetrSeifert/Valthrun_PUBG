@@ -35,7 +35,8 @@ pub struct ActorCache {
 }
 
 pub struct StateActorLists {
-    array: Reference<dyn TArray<Ptr64<dyn AActor>>>,
+    actors_array: Reference<dyn TArray<Ptr64<dyn AActor>>>,
+    actors_for_gc_array: Reference<dyn TArray<Ptr64<dyn AActor>>>,
     cache: ActorCache,
 }
 
@@ -59,8 +60,15 @@ impl State for StateActorLists {
             .value_reference(memory.view_arc(), &decrypt)
             .context("nullptr")?;
 
+        let actors_for_gc_array = u_level
+            .actors_for_gc()
+            .context("actors_for_gc_array nullptr")?
+            .value_reference(memory.view_arc(), &decrypt)
+            .context("nullptr")?;
+
         Ok(Self {
-            array: actor_array,
+            actors_array: actor_array,
+            actors_for_gc_array,
             cache: ActorCache::default(),
         })
     }
@@ -90,51 +98,61 @@ impl StateActorLists {
         let mut current_actors: HashMap<u32, Vec<(u64, Ptr64<dyn AActor>)>> = HashMap::new();
         let mut current_addresses = HashSet::new();
 
-        // Scan through all actors and collect the ones we want to cache
-        for actor_ptr in self
-            .array
-            .data()?
-            .elements(memory.view(), 0..self.array.count()? as usize)?
-        {
-            if actor_ptr.is_null() {
-                continue;
-            }
+        let actor_sources = [
+            (&self.actors_array, "actors_array"),
+            (&self.actors_for_gc_array, "actors_for_gc_array"),
+        ];
 
-            let actor = actor_ptr
-                .value_reference(memory.view_arc())
-                .context("actor nullptr")?;
+        for (actor_array, source_name) in actor_sources.iter() {
+            // Scan through all actors and collect the ones we want to cache
+            for actor_ptr in actor_array
+                .data()?
+                .elements(memory.view(), 0..actor_array.count()? as usize)?
+            {
+                if actor_ptr.is_null() {
+                    continue;
+                }
 
-            let name = gname_cache.get_gname_by_id(&decrypt, &pubg_handle, &memory, actor.id()?)?;
+                let actor = actor_ptr
+                    .value_reference(memory.view_arc())
+                    .context("actor nullptr")?;
 
-            if name != "PlayerFemale_A_C" && name != "PlayerMale_A_C" {
-                continue;
-            }
+                let name = gname_cache.get_gname_by_id(&decrypt, &pubg_handle, &memory, actor.id()?)?;
 
-            let actor_addr = actor.reference_address();
+                if name != "PlayerFemale_A_C" && name != "PlayerMale_A_C" {
+                    continue;
+                }
 
-            // Skip if we've never seen this actor with our IDs before
-            if !self.cache.tracked_addresses.contains(&actor_addr) {
-                let actor_id = match actor.id() {
-                    Ok(id) => id,
-                    Err(_) => continue,
-                };
+                if *source_name == "actors_for_gc_array" {
+                    log::info!("Found relevant actor {} in {}", name, source_name);
+                }
 
-                current_actors
-                    .entry(actor_id)
-                    .or_default()
-                    .push((actor_addr, actor_ptr.clone()));
+                let actor_addr = actor.reference_address();
 
-                current_addresses.insert(actor_addr);
-            } else {
-                // We know this actor's ID since we've seen it before
-                for (id, actors) in &self.cache.actors {
-                    if actors.iter().any(|(addr, _)| *addr == actor_addr) {
-                        current_actors
-                            .entry(*id)
-                            .or_default()
-                            .push((actor_addr, actor_ptr.clone()));
-                        current_addresses.insert(actor_addr);
-                        break;
+                // Skip if we've never seen this actor with our IDs before
+                if !self.cache.tracked_addresses.contains(&actor_addr) {
+                    let actor_id = match actor.id() {
+                        Ok(id) => id,
+                        Err(_) => continue,
+                    };
+
+                    current_actors
+                        .entry(actor_id)
+                        .or_default()
+                        .push((actor_addr, actor_ptr.clone()));
+
+                    current_addresses.insert(actor_addr);
+                } else {
+                    // We know this actor's ID since we've seen it before
+                    for (id, actors) in &self.cache.actors {
+                        if actors.iter().any(|(addr, _)| *addr == actor_addr) {
+                            current_actors
+                                .entry(*id)
+                                .or_default()
+                                .push((actor_addr, actor_ptr.clone()));
+                            current_addresses.insert(actor_addr);
+                            break;
+                        }
                     }
                 }
             }
