@@ -31,7 +31,9 @@ use crate::{
 #[derive(Default)]
 pub struct ActorCache {
     pub actors: HashMap<u32, Vec<(u64, Ptr64<dyn AActor>)>>,
+    pub actors_for_gc: HashMap<u32, Vec<(u64, Ptr64<dyn AActor>)>>,
     tracked_addresses: HashSet<u64>,
+    tracked_addresses_for_gc: HashSet<u64>,
 }
 
 pub struct StateActorLists {
@@ -98,61 +100,104 @@ impl StateActorLists {
         let mut current_actors: HashMap<u32, Vec<(u64, Ptr64<dyn AActor>)>> = HashMap::new();
         let mut current_addresses = HashSet::new();
 
-        let actor_sources = [
-            (&self.actors_array, "actors_array"),
-            (&self.actors_for_gc_array, "actors_for_gc_array"),
-        ];
+        // Scan through all actors and collect the ones we want to cache
+        for actor_ptr in self
+            .actors_array
+            .data()?
+            .elements(memory.view(), 0..self.actors_array.count()? as usize)?
+        {
+            if actor_ptr.is_null() {
+                continue;
+            }
 
-        for (actor_array, source_name) in actor_sources.iter() {
-            // Scan through all actors and collect the ones we want to cache
-            for actor_ptr in actor_array
-                .data()?
-                .elements(memory.view(), 0..actor_array.count()? as usize)?
-            {
-                if actor_ptr.is_null() {
-                    continue;
+            let actor = actor_ptr
+                .value_reference(memory.view_arc())
+                .context("actor nullptr")?;
+
+            let name = gname_cache.get_gname_by_id(&decrypt, &pubg_handle, &memory, actor.id()?)?;
+
+            if name != "PlayerFemale_A_C" && name != "PlayerMale_A_C" {
+                continue;
+            }
+
+            let actor_addr = actor.reference_address();
+
+            // Skip if we've never seen this actor with our IDs before
+            if !self.cache.tracked_addresses.contains(&actor_addr) {
+                let actor_id = match actor.id() {
+                    Ok(id) => id,
+                    Err(_) => continue,
+                };
+
+                current_actors
+                    .entry(actor_id)
+                    .or_default()
+                    .push((actor_addr, actor_ptr.clone()));
+
+                current_addresses.insert(actor_addr);
+            } else {
+                // We know this actor's ID since we've seen it before
+                for (id, actors) in &self.cache.actors {
+                    if actors.iter().any(|(addr, _)| *addr == actor_addr) {
+                        current_actors
+                            .entry(*id)
+                            .or_default()
+                            .push((actor_addr, actor_ptr.clone()));
+                        current_addresses.insert(actor_addr);
+                        break;
+                    }
                 }
+            }
+        }
 
-                let actor = actor_ptr
-                    .value_reference(memory.view_arc())
-                    .context("actor nullptr")?;
+        let mut current_actors_for_gc: HashMap<u32, Vec<(u64, Ptr64<dyn AActor>)>> = HashMap::new();
+        let mut current_addresses_for_gc = HashSet::new();
 
-                let name = gname_cache.get_gname_by_id(&decrypt, &pubg_handle, &memory, actor.id()?)?;
+        // Scan through all actors and collect the ones we want to cache
+        for actor_ptr in self
+            .actors_for_gc_array
+            .data()?
+            .elements(memory.view(), 0..self.actors_for_gc_array.count()? as usize)?
+        {
+            if actor_ptr.is_null() {
+                continue;
+            }
 
-                if name != "PlayerFemale_A_C" && name != "PlayerMale_A_C" {
-                    continue;
-                }
+            let actor = actor_ptr
+                .value_reference(memory.view_arc())
+                .context("actor nullptr")?;
 
-                if *source_name == "actors_for_gc_array" {
-                    log::info!("Found relevant actor {} in {}", name, source_name);
-                }
+            let name = gname_cache.get_gname_by_id(&decrypt, &pubg_handle, &memory, actor.id()?)?;
 
-                let actor_addr = actor.reference_address();
+            if name != "PlayerFemale_A_C" && name != "PlayerMale_A_C" {
+                continue;
+            }
 
-                // Skip if we've never seen this actor with our IDs before
-                if !self.cache.tracked_addresses.contains(&actor_addr) {
-                    let actor_id = match actor.id() {
-                        Ok(id) => id,
-                        Err(_) => continue,
-                    };
+            let actor_addr = actor.reference_address();
 
-                    current_actors
-                        .entry(actor_id)
-                        .or_default()
-                        .push((actor_addr, actor_ptr.clone()));
+            // Skip if we've never seen this actor with our IDs before
+            if !self.cache.tracked_addresses_for_gc.contains(&actor_addr) {
+                let actor_id = match actor.id() {
+                    Ok(id) => id,
+                    Err(_) => continue,
+                };
 
-                    current_addresses.insert(actor_addr);
-                } else {
-                    // We know this actor's ID since we've seen it before
-                    for (id, actors) in &self.cache.actors {
-                        if actors.iter().any(|(addr, _)| *addr == actor_addr) {
-                            current_actors
-                                .entry(*id)
-                                .or_default()
-                                .push((actor_addr, actor_ptr.clone()));
-                            current_addresses.insert(actor_addr);
-                            break;
-                        }
+                current_actors_for_gc
+                    .entry(actor_id)
+                    .or_default()
+                    .push((actor_addr, actor_ptr.clone()));
+
+                current_addresses_for_gc.insert(actor_addr);
+            } else {
+                // We know this actor's ID since we've seen it before
+                for (id, actors) in &self.cache.actors_for_gc {
+                    if actors.iter().any(|(addr, _)| *addr == actor_addr) {
+                        current_actors_for_gc
+                            .entry(*id)
+                            .or_default()
+                            .push((actor_addr, actor_ptr.clone()));
+                        current_addresses_for_gc.insert(actor_addr);
+                        break;
                     }
                 }
             }
@@ -160,6 +205,8 @@ impl StateActorLists {
 
         self.cache.actors = current_actors;
         self.cache.tracked_addresses = current_addresses;
+        self.cache.actors_for_gc = current_actors_for_gc;
+        self.cache.tracked_addresses_for_gc = current_addresses_for_gc;
         Ok(())
     }
 
@@ -167,12 +214,25 @@ impl StateActorLists {
         self.cache.actors.get(&actor_id)
     }
 
+    pub fn get_cached_actors_for_gc(
+        &self,
+        actor_id: u32,
+    ) -> Option<&Vec<(u64, Ptr64<dyn AActor>)>> {
+        self.cache.actors_for_gc.get(&actor_id)
+    }
+
     pub fn cached_actors(&self) -> &HashMap<u32, Vec<(u64, Ptr64<dyn AActor>)>> {
         &self.cache.actors
+    }
+
+    pub fn cached_actors_for_gc(&self) -> &HashMap<u32, Vec<(u64, Ptr64<dyn AActor>)>> {
+        &self.cache.actors_for_gc
     }
 
     pub fn clear(&mut self) {
         self.cache.actors.clear();
         self.cache.tracked_addresses.clear();
+        self.cache.actors_for_gc.clear();
+        self.cache.tracked_addresses_for_gc.clear();
     }
 }

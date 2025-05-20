@@ -113,31 +113,56 @@ impl Enhancement for PlayerSpyer {
         let actor_lists = ctx.states.resolve::<StateActorLists>(())?;
 
         let mut players_data: Vec<(StatePlayerInfo, u32, u32, i32)> = Vec::new();
+        let mut players_data_for_gc: Vec<(StatePlayerInfo, u32, u32, i32)> = Vec::new();
 
         let cached_actors = actor_lists.cached_actors();
         for (_actor_id, actor_list) in cached_actors {
             self.collect_players_info(&ctx.states, actor_list, &mut players_data)?;
         }
 
-        if players_data.is_empty() {
+        let cached_actors_for_gc = actor_lists.cached_actors_for_gc();
+        for (_actor_id, actor_list) in cached_actors_for_gc {
+            self.collect_players_info(&ctx.states, actor_list, &mut players_data_for_gc)?;
+        }
+
+        if !players_data.is_empty() {
+            players_data.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+
+            let first_team = players_data[0].2;
+            players_data.retain(|x| x.2 != first_team);
+
+            players_data.dedup_by(|a, b| a.1 == b.1);
+
+            for (player_info, distance, team_id, angle) in players_data {
+                log::info!(
+                    "Distance: {} Health: {} Angle: {} Team: {}",
+                    distance,
+                    player_info.health,
+                    angle,
+                    team_id
+                );
+            }
             return Ok(());
         }
 
-        players_data.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        if !players_data_for_gc.is_empty() {
+            players_data_for_gc.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
 
-        let first_team = players_data[0].2;
-        players_data.retain(|x| x.2 != first_team);
+            let first_team = players_data_for_gc[0].2;
+            players_data_for_gc.retain(|x| x.2 != first_team);
 
-        players_data.dedup_by(|a, b| a.1 == b.1);
+            players_data_for_gc.dedup_by(|a, b| a.1 == b.1);
 
-        for (player_info, distance, team_id, angle) in players_data {
-            log::info!(
-                "Distance: {} Health: {} Angle: {} Team: {}",
-                distance,
-                player_info.health,
-                angle,
-                team_id
-            );
+            for (player_info, distance, team_id, angle) in players_data_for_gc {
+                log::info!(
+                    "GC: Distance: {} Health: {} Angle: {} Team: {}",
+                    distance,
+                    player_info.health,
+                    angle,
+                    team_id
+                );
+            }
+            return Ok(());
         }
 
         Ok(())

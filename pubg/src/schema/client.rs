@@ -27,7 +27,7 @@ pub struct ULevel {
     #[field(offset = 0x90)]
     pub actors: EncryptedPtr64<dyn TArray<Ptr64<dyn AActor>>>,
 
-    #[field(offset =  0x270)]
+    #[field(offset = 0x270)]
     pub actors_for_gc: EncryptedPtr64<dyn TArray<Ptr64<dyn AActor>>>,
 }
 
