@@ -98,3 +98,77 @@ jobs:
           mkdir -p artifacts
           cp target/release/pubg_controller artifacts/
         shell: bash
+
+  build-image-dumper:
+    name: Image_Dumper (Windows)
+    runs-on: windows-latest
+    needs: [rust-check]
+
+    steps:
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Get package version
+        shell: bash
+        run: |
+          VERSION=$(cargo pkgid --manifest-path image_dumper/Cargo.toml | cut -d# -f2 | cut -d: -f2)
+          echo "Package version: $VERSION"
+          echo "ARTIFACT_VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      - name: Build
+        run: cargo build --verbose --release --bin image_dumper
+        env:
+          RUSTFLAGS: -Ctarget-feature=+crt-static
+
+      - name: Archive Build Artifacts
+        run: |
+          mkdir -p artifacts
+          cp target/release/image_dumper.exe artifacts/
+        shell: bash
+
+  build-image-dumper-linux:
+    name: Image_Dumper (Linux)
+    runs-on: ubuntu-latest
+    needs: [rust-check]
+
+    steps:
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Get package version
+        shell: bash
+        run: |
+          VERSION=$(cargo pkgid --manifest-path image_dumper/Cargo.toml | cut -d# -f2 | cut -d: -f2)
+          echo "Package version: $VERSION"
+          echo "ARTIFACT_VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      - name: Build
+        run: cargo build --verbose --release --bin image_dumper
+
+      - name: Archive Build Artifacts
+        run: |
+          mkdir -p artifacts
+          cp target/release/image_dumper artifacts/
+        shell: bash
