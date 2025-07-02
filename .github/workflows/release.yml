@@ -38,6 +38,7 @@ jobs:
       - name: Build Project
         run: |
           cargo build --release --bin pubg_controller
+          cargo build --release --bin image_dumper
         env:
           CARGO_TERM_COLOR: always
 
@@ -46,6 +47,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path artifacts
           Copy-Item target/release/pubg_controller.exe artifacts/
+          Copy-Item target/release/image_dumper.exe artifacts/
 
       - name: Generate Release Notes
         id: release_notes
@@ -120,7 +122,7 @@ jobs:
           }
           
           # Prepare additional sections
-          $featuresSection = "## 🛠️  Features`n- Distance from players`n- Players health`n- Angle to players`n`n## 🔧 Setup Requirements`n- Premium Zenith driver (available at https://valth.run/)`n- Run the executable in VM or WSL (for better safety)"
+          $featuresSection = "## 🛠️  Features`n- Distance from players`n- Players health`n- Angle to players`n- Memory dumping tool (image_dumper)`n`n## 🔧 Setup Requirements`n- Premium Zenith driver (available at https://valth.run/)`n- Run the executable in VM or WSL (for better safety)"
           
           # Combine release notes with additional sections
           $fullReleaseNotes = $releaseNotes + $featuresSection
@@ -142,7 +144,7 @@ jobs:
           draft: false
           prerelease: false
 
-      - name: Upload Windows Release Asset
+      - name: Upload Windows Controller Release Asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -152,8 +154,18 @@ jobs:
           asset_name: "pubg_enhancer_${{ env.SHORT_SHA }}.exe"
           asset_content_type: application/octet-stream
 
+      - name: Upload Windows Image Dumper Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/image_dumper.exe
+          asset_name: "image_dumper_windows_${{ env.SHORT_SHA }}.exe"
+          asset_content_type: application/octet-stream
+
   build-linux:
-    name: Build Linux Executable
+    name: Build Linux Executables
     runs-on: ubuntu-latest
     needs: create-release
 
@@ -179,9 +191,10 @@ jobs:
           echo "Extracted short SHA: $SHORT_SHA"
           echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
 
-      - name: Build Linux Project
+      - name: Build Linux Projects
         run: |
           cargo build --release --bin pubg_controller
+          cargo build --release --bin image_dumper
         env:
           CARGO_TERM_COLOR: always
 
@@ -190,6 +203,7 @@ jobs:
         run: |
           mkdir -p artifacts
           cp target/release/pubg_controller artifacts/
+          cp target/release/image_dumper artifacts/
 
       - name: Get Release Upload URL
         id: get_release
@@ -206,12 +220,22 @@ jobs:
             return release.data.upload_url;
           result-encoding: string
 
-      - name: Upload Linux Release Asset
+      - name: Upload Linux Controller Release Asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.get_release.outputs.result }}
           asset_path: artifacts/pubg_controller
-          asset_name: "pubg_enhancer_${{ env.SHORT_SHA }}"
+          asset_name: "pubg_enhancer_linux_${{ env.SHORT_SHA }}"
+          asset_content_type: application/octet-stream
+
+      - name: Upload Linux Image Dumper Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.get_release.outputs.result }}
+          asset_path: artifacts/image_dumper
+          asset_name: "image_dumper_linux_${{ env.SHORT_SHA }}"
           asset_content_type: application/octet-stream
