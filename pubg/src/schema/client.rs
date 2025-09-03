@@ -96,6 +96,9 @@ impl AActor for dyn APawn {}
 
 #[raw_struct(size = 0x0A20)]
 pub struct ACharacter {
+    #[field(offset = 0x0780)]
+    pub mesh: EncryptedPtr64<dyn USkeletalMeshComponent>,
+
     #[field(offset = 0x010C)]
     pub health_flag: u8,
 
@@ -118,6 +121,12 @@ pub struct ACharacter {
     pub health6: u32,
 }
 impl APawn for dyn ACharacter {}
+
+#[raw_struct(size = 0x0499)]
+pub struct USkeletalMeshComponent {
+    #[field(offset = 0x0498)]
+    pub always_create_physics_state: u8,
+}
 
 #[raw_struct(size = 0x1034)]
 pub struct APlayerCameraManager {

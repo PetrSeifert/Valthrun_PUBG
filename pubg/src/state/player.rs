@@ -18,6 +18,7 @@ use crate::{
         ACharacter,
         USceneComponent,
     },
+    state::StateDecrypt,
     StatePubgMemory,
 };
 
@@ -44,6 +45,7 @@ impl Hash for StatePlayerInfoParams {
 pub struct StatePlayerInfo {
     pub position: [f32; 3],
     pub health: u32,
+    pub physics_state: u8,
 }
 
 impl StatePlayerInfo {
@@ -51,6 +53,7 @@ impl StatePlayerInfo {
         Self {
             position: [0.0; 3],
             health: 0,
+            physics_state: 0,
         }
     }
 
@@ -108,6 +111,17 @@ impl State for StatePlayerInfo {
 
     fn create(states: &StateRegistry, params: Self::Parameter) -> anyhow::Result<Self> {
         let memory = states.resolve::<StatePubgMemory>(())?;
+        let decrypt = states.resolve::<StateDecrypt>(())?;
+
+        let mesh = params
+            .character
+            .mesh()?
+            .value_reference(memory.view_arc(), &decrypt);
+        let physics_state = match mesh {
+            Some(mesh) => mesh.always_create_physics_state()?,
+            None => 0,
+        };
+
         let health = Self::get_health(params.character, memory)?;
         let health = health as u32;
 
@@ -116,6 +130,7 @@ impl State for StatePlayerInfo {
         Ok(Self {
             position: relative_location,
             health,
+            physics_state,
         })
     }
 

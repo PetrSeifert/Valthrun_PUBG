@@ -28,7 +28,7 @@ impl PlayerSpyer {
         &self,
         states: &StateRegistry,
         actor_list: &Vec<(u64, Ptr64<dyn AActor>)>,
-        players_data: &mut Vec<(StatePlayerInfo, u32, u32, i32)>,
+        players_data: &mut Vec<(StatePlayerInfo, u32, u32, i32, u8)>,
     ) -> anyhow::Result<()> {
         let decrypt = states.resolve::<StateDecrypt>(())?;
         let pubg_handle = states.resolve::<StatePubgHandle>(())?;
@@ -102,7 +102,13 @@ impl PlayerSpyer {
                 angle_diff as i32
             };
 
-            players_data.push((player_info.clone(), distance, team_id, angle_diff));
+            players_data.push((
+                player_info.clone(),
+                distance,
+                team_id,
+                angle_diff,
+                player_info.physics_state,
+            ));
         }
         Ok(())
     }
@@ -112,7 +118,7 @@ impl Enhancement for PlayerSpyer {
     fn update(&mut self, ctx: &crate::UpdateContext) -> anyhow::Result<()> {
         let actor_lists = ctx.states.resolve::<StateActorLists>(())?;
 
-        let mut players_data: Vec<(StatePlayerInfo, u32, u32, i32)> = Vec::new();
+        let mut players_data: Vec<(StatePlayerInfo, u32, u32, i32, u8)> = Vec::new();
 
         let cached_actors = actor_lists.cached_actors();
         for (_actor_id, actor_list) in cached_actors {
@@ -130,13 +136,14 @@ impl Enhancement for PlayerSpyer {
 
         players_data.dedup_by(|a, b| a.1 == b.1);
 
-        for (player_info, distance, team_id, angle) in players_data {
+        for (player_info, distance, team_id, angle, physics_state) in players_data {
             log::info!(
-                "Distance: {} Health: {} Angle: {} Team: {}",
+                "Distance: {} Health: {} Angle: {} Team: {} PhysicsState: {}",
                 distance,
                 player_info.health,
                 angle,
-                team_id
+                team_id,
+                physics_state
             );
         }
 
