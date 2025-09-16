@@ -9,6 +9,7 @@ members = [
     "driver/protocol",
     "driver/interface",
 
+    "offsets_dumper",
     "controller",
     "pubg",
 ]

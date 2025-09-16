@@ -1,0 +1,183 @@
+    GNames SIG1  48 89 05 ? ? ? ? 48 8D 0D ? ? ? ? E8 ? ? ? ? E9 ? ? ? ? 48 8D 0D ? ? ? ? E8 ? ? ? ? 83 3D ? ? ? ? ? 0F 85 ? ? ? ? 48 8D 0D ? ? ? ? 48 83 3D ? ? ? ? ? 75 13 48 8B D1 B9 ? ? ? ? 48 8B 05 ? ? ? ? FF D0 EB 35 //Must Be		mov     cs:qword_XXXXXXXXXXXX, rax
+    GNames SIG2  48 8D 0D ? ? ? ? 48 83 3D ? ? ? ? ? 75 ? 48 8B D1 B9 ? ? ? ?   //Must Be		lea     rcx, qword_7FF624673E10
+     
+    UWorld SIG  48 89 05 ? ? ? ? 48 83 C4 28 C3 C7 44 24 ? ? ? ? ? C7 44 24 ? ? ? ? ? 48 8B 44 24 ? 48 89 05 ? ? ? ? 48 83 C4 28 C3 //Choose Last Result And Must Be		mov     cs:qword_xxxxxxxxxxxx, rax
+     
+    XenuineDecrypt SIG1  48 8B D1 B9 ?? ?? ?? ?? //All Results Is Good, Because Instructions Is Called From Multiple Functions And Must Be		call    cs:off_xxxxxxxxxxxx
+     
+    CurrentLevel SIG 49 8B 56 50 4D 85 C0 75 0D 8B CE 48 8B 05 ? ? ? ? FF D0 EB 29 //Must Be		mov     rdx, [r14+XXh]
+     
+    GameInstance SIG 4C 8B ?? ? ? ? ? 4D 85 ?? 75 ?? //Must Be		mov     r10, [rax+XXXh]
+     
+    LocalPlayers SIG 48 8B 86 ? ? ? ? 48 8B 0C D8 4D 85 C0 //Must Be		mov     rax, [rsi+XXXh]
+     
+    Actors SIG 48 8B 88 ? ? ? ? 48 39 1D ? ? ? ? 75 13 48 8B D1 B9 ? ? ? ? 48 8B 05 ? ? ? ? FF D0 EB 38 //Must Be		mov     rcx, [rax+XXXh]
+     
+    PlayerController SIG 48 8D 54 24 ? FF 90 ? ? ? ? F2 0F 10 00 8B 40 08 F2 0F 11 03 89 43 08 F3 0F 10 43 ? F3 0F 10 13 F3 0F 10 4B ? F3 0F 59 D2 F3 0F 59 C0 F3 0F 59 C9 F3 0F 58 D0 F3 0F 58 D1 //Must Be		lea     rdx, [rsp+XXh+var_18]
+     
+    AcknowledgedPawn SIG 48 8B 83 B8 04 00 00 48 89 84 24 90 00 00 00 4D 85 C0 75 10 48 8B D0 8B CE 48 8B 05 FD 17 CB 0E FF D0 EB 42 //Must Be		mov     rax, [rbx+XXXh]
+     
+    PlayerCameraManager SIG 48 8B 88 ? ? ? ? 48 8B 01 FF 90 ? ? ? ? F3 41 0F 11 46 ? 48 83 3D ? ? ? ? ? 48 8B 0B //Must Be		mov     rcx, [rax+XXXh]
+     
+    RootComponent SIG  4C 8B 97 ? ? ? ? 4D 85 C9 75 19 48 8B 05 ? ? ? ? 49 8B D2 B9 ? ? ? ? FF D0 48 8B C8 E9 ? ? ? ? //Choose Last Result And Must Be		mov     r10, [rdi+XXXh]
+     
+    GroggyHealth SIG  41 0F 2F 89 ? ? ? ? 0F 82 ? ? ? ? E9 ? ? ? ? //Must Be		comiss  xmm1, dword ptr [r9+XXXXh]
+     
+    LastTeamNum SIG 44 85 63 08 0F 85 ? ? ? ? 48 8B 07 48 8B CF FF 90 ? ? ? ? 41 3B 86 ? ? ? ? //Must Be		cmp     eax, [r14+XXXXh]
+     
+    CharacterName SIG Not Found. If You Have It, Kindly Share It With Us!
+     
+    SpectatedCount SIG 48 8B 03 48 8B CB FF 83 ? ? ? ? F3 0F 11 B3 ? ? ? ? FF 90 ? ? ? ? 48 85 C0 74 0D 83 B8 ? ? ? ? ? 0F 8F ? ? ? ? //Must Be		cmp     dword ptr [rax+XXXXh], 0
+     
+    Mesh SIG 48 8B 99 ? ? ? ? 48 85 DB 74 09 F6 83 ? ? ? ? ? 75 08 //Must Be		mov     rbx, [rcx+XXXh]
+     
+    StaticMesh SIG 48 03 94 CE ?? ?? ?? ?? 0F 10 0A 0F 28 D9 0F 28 C1 //Must Be		add     rdx, [rsi+rcx*8+XXXXh]
+     
+    ComponentToWorld SIG 0F 10 80 ? ? ? ? 0F 11 43 20 0F 10 88 ? ? ? ? 0F 11 4B 30 0F 10 80 ? ? ? ? 0F 11 43 40 48 8B 8B ? ? ? ? //Must Be		movups  xmm0, xmmword ptr [rax+XXXh]
+     
+    ComponentLocation SIG 0F 10 88 ? ? ? ? 48 8D 44 24 ? 0F 28 C1 F3 0F 11 4C 24 ? 0F C6 C1 55 0F C6 C9 AA F3 0F 11 4C 24 ? F3 0F 11 44 24 ? //Must Be		movups  xmm1, xmmword ptr [rax+XXXh]
+     
+    ComponentVelocity SIG 48 8B 91 ? ? ? ? 48 85 D2 74 1C F2 0F 10 81 ? ? ? ? F2 0F 11 82 ? ? ? ? 8B 81 ? ? ? ? 89 82 ? ? ? ? //Must Be		mov     rdx, [rcx+XXXh]
+     
+    CameraFov SIG F3 0F 10 81 ? ? ? ? 0F 2F 05 ? ? ? ? 77 08 F3 0F 10 81 ? ? ? ? //You Will Get 2 Results Choose First One!		movss   xmm0, dword ptr [rcx+448h]
+                                                                                                                                comiss  xmm0, dword ptr cs:xmmword_7FF622B8C850+4
+                                                                                                                                ja      short locret_7FF613BB84A9
+                                                                                                                                movss   xmm0, dword ptr [rcx+XXXXh] <--- CameraFov
+    																															
+    CameraPos + CameraRot SIG F2 0F 10 81 ? ? ? ? F2 0F 11 ?? 8B 81 ? ? ? ? 89 ?? 08 F2 0F 10 81 ? ? ? ? //You Will Get 2 Results Choose First One!		mov     rcx, [rbx+4E0h]
+                                                                                                                                                        mov     rcx, [rbx+4E0h]
+                                                                                                                                                        test    rcx, rcx
+                                                                                                                                                        jz      short loc_7FF613BB9A71
+                                                                                                                                                        movss   xmm0, dword ptr [rcx+0A70h]
+                                                                                                                                                        comiss  xmm0, dword ptr cs:xmmword_7FF622B8C850+4
+                                                                                                                                                        jbe     short loc_7FF613BB9A71
+                                                                                                                                                        movsd   xmm0, qword ptr [rcx+XXXXh] <--- CameraPos
+                                                                                                                                                        movsd   qword ptr [rdi], xmm0
+                                                                                                                                                        mov     eax, [rcx+0A88h]
+                                                                                                                                                        mov     [rdi+8], eax
+                                                                                                                                                        movsd   xmm0, qword ptr [rcx+XXXXh] <--- CameraRot
+                                                                                                                                                        movsd   qword ptr [r14], xmm0
+                                                                                                                                                        mov     eax, [rcx+0AB0h]
+     
+     
+    WeaponProcessor SIG 48 8B 8B ? ? ? ? E8 ? ? ? ? 84 C0 0F 85 ? ? ? ? 80 BB ? ? ? ? ? //Must Be		mov     rcx, [rbx+XXXXh]
+     
+    EquippedWeapons SIG 48 8B 8F ? ? ? ? 48 8B 0C F1 48 8B 11 FF 92 ? ? ? ? 84 C0 74 0D //Must Be		mov     rcx, [rdi+XXXh]
+     
+    CurrentWeaponIndex SIG  44 0F B6 C2 84 D2 74 0E 41 83 F8 01 75 10 0F BE 81 ? ? ? ? C3 //Must Be		movsx   eax, byte ptr [rcx+XXXh]
+     
+    WeaponTrajectoryData SIG 48 8B 87 ? ? ? ? 48 8B 5C 24 ? 48 83 C4 20 5F C3 //Choose Fourth Result And Must Be		mov     rax, [rdi+XXXXh]
+     
+    TrajectoryConfig SIG F7 43 ? ? ? ? ? 75 12 48 8B CE E8 ? ? ? ? F3 0F 10 80 ? ? ? ? EB 03 //Must Be		 movss   xmm0, dword ptr [rax+XXXh]
+     
+    AnimScriptInstance SIG 48 8B 91 ? ? ? ? 33 C0 48 85 D2 74 06 80 7A 40 02 74 01 //Must Be		mov     rdx, [rcx+XXXXh]
+     
+    ControlRotation_CP SIG F2 0F 11 87 ? ? ? ? 8B 40 08 89 87 ? ? ? ? E9 ? ? ? ? //You Will Get 3 Results Choose Second One!		movsd   qword ptr [rdi+XXXh], xmm0
+     
+    RecoilADSRotation_CP SIG F3 0F 10 8F ? ? ? ? 48 8B 8F ? ? ? ? F3 0F 10 B0 ? ? ? ? E8 ? ? ? ? F3 0F 59 05 ? ? ? ? 0F 28 D6 F3 0F 10 1D ? ? ? ? //Must Be		movss   xmm1, dword ptr [rdi+XXXh]
+     
+    LeanLeftAlpha_CP SIG F3 0F 10 83 ? ? ? ? 41 0F 28 D8 41 0F 28 D5 E8 ? ? ? ? 8A 8B ? ? ? ? 44 0F 28 F8 F3 44 0F 11 BB ? ? ? ? 84 C9 74 06 41 0F 28 CE EB 03 //Must Be		movss   xmm0, dword ptr [rbx+XXXh]
+     
+    LeanRightAlpha_CP SIG F3 44 0F 11 8B ? ? ? ? 44 0F 28 C7 84 C0 74 46 F3 45 0F 59 E3 F3 45 0F 5C C1 41 0F 28 D3 F3 45 0F 5C D4 41 0F 28 CA 41 0F 28 C2 //Must Be		movss   dword ptr [rbx+XXXh], xmm9
+     
+    VehicleRiderComponent SIG 48 8B 91 ?? ?? ?? ?? 33 C0 48 8B F9 48 85 D2 //You Will Get many Results Choose Second One!		mov     rdx, [rcx+XXXXh]
+     
+    LastVehiclePawn SIG 49 8B 86 ? ? ? ? 0F 57 F6 48 85 C0 0F 84 ? ? ? ? 8B 78 20 C1 E7 10 33 FE 33 78 20 //Must Be		mov     rax, [r14+XXXh]
+     
+    ReplicatedMovement SIG 0F 10 83 ? ? ? ? 8B 83 ? ? ? ? 48 8D 93 ? ? ? ? 0F 10 8B ? ? ? ? 48 8B CB C6 83 ? ? ? ? ? 0F 11 83 ? ? ? ? 0F 10 83 ? ? ? ? 0F 11 8B ? ? ? ? 0F 11 83 ? ? ? ? 89 83 ? ? ? ? //Must Be		movups  xmm0, xmmword ptr [rbx+XXXh]
+     
+    SeatIndex SIG 39 99 ? ? ? ? 7C 40 48 8B 89 ? ? ? ? E8 ? ? ? ? 48 8B C8 E8 ? ? ? ? 48 85 C0 74 19 //Must Be		cmp     [rcx+XXXh], ebx
+     
+    VehicleRiderComponent + SeatIndex SIG  48 8B 87 ? ? ? ? 8B 80 ? ? ? ? C1 E8 1F 34 01 EB 02
+    mov     rax, [rdi+XXXXh] <--- VehicleRiderComponent
+    mov     eax, [rax+XXXh]  <--- SeatIndex
+    shr     eax, 1Fh
+    xor     al, 1
+    jmp     short loc_7FF678FADC46
+     
+    LastSubmitTime SIG F3 0F 10 9B ? ? ? ? 0F 28 CA F3 0F 5C CB F3 0F 10 05 ? ? ? ? 0F 2F C1  //Must Be		movss   xmm3, dword ptr [rbx+XXXh]
+     
+    LastRenderTimeOnScreen SIG 0F 2F 83 ? ? ? ? 41 0F 43 CE 83 E0 FB 0B C8 48 8B 03 //Must Be		comiss  xmm0, dword ptr [rbx+XXXh]
+     
+    bAlwaysCreatePhysicsState SIG 83 8F ? ? ? ? ? 48 8B 5C 24 ? 48 8B 74 24 ? 48 83 C4 20 5F C3 //Must Be		or      dword ptr [rdi+XXXh], 6
+     
+     
+    Decrypt Player Health SIG 80 BB ? ? ? ? ? 74 ? ? ? ? ? ? ? ? 74 ? ? ? ? ? ? ? ? 0F ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? 74 ? 44 8B 83 ? ? ? ? 48 8D ? ? ? E8 ? ? ? ?
+     
+                    test    dword ptr [rax+8], 20000000h
+                    jnz     loc_7FF613DC96AC
+                    cmp     byte ptr [rbx+XXXh], 3 <--- HealthFlag or Health0
+                    jz      short loc_7FF613DC9641
+                    cmp     dword ptr [rbx+XXXXh], 0 <--- Health1
+                    jz      short loc_7FF613DC9641
+                    cmp     byte ptr [rbx+XXXh], 0 <--- Health5
+                    movzx   eax, byte ptr [rbx+XXXXh] <--- Health3
+                    movss   xmm0, dword ptr [rax+rbx+XXXXh] <--- Health4
+                    movss   dword ptr [rsp+38h+arg_8], xmm0
+                    jz      short loc_7FF613DC9649
+                    mov     r8d, [rbx+XXXXh] <--- Health6
+                    lea     rcx, [rsp+38h+arg_8]
+                    call    sub_7FF614040A14
+                    movss   xmm0, dword ptr [rsp+38h+arg_8]
+                    jmp     short loc_7FF613DC9649
+    ; ---------------------------------------------------------------------------
+     
+    loc_7FF613DC9641:                       ; CODE XREF: sub_7FF613DC9540+BE↑j
+                                            ; sub_7FF613DC9540+C7↑j
+                    movss   xmm0, dword ptr [rbx+XXXXh] <--- Health2
+     
+     
+     
+    Health Xor Keys SIG 48 89 45 F0 C7 45 ? ? ? ? ? 33 D2 C7 45 ? ? ? ? ? C7 45 ? ? ? ? ? C7 45 ? ? ? ? ? C7 45 ? ? ? ? ? C7 45 ? ? ? ? ? C7 45 ? ? ? ? ? C7 45 ? ? ? ? ? C7 45 ? ? ? ? ? C7 45 ? ? ? ? ? C7 45 ? ? ? ? ? C7 45 ? ? ? ? ? C7 45 ? ? ? ? ? C7 45 ? ? ? ? ? C7 45 ? ? ? ? ? C7 45 ? ? ? ? ?
+     
+    mov     [rbp+var_10], rax
+    mov     [rbp+var_50], XXXXXXXXh <--- HealthXorKey0
+    xor     edx, edx
+    mov     [rbp+var_4C], XXXXXXXXh <--- HealthXorKey1
+    mov     [rbp+var_48], XXXXXXXXh <--- HealthXorKey2
+    mov     [rbp+var_44], XXXXXXXXh <--- HealthXorKey3
+    mov     [rbp+var_40], XXXXXXXXh <--- HealthXorKey4
+    mov     [rbp+var_3C], XXXXXXXXh <--- HealthXorKey5
+    mov     [rbp+var_38], XXXXXXXXh <--- HealthXorKey6
+    mov     [rbp+var_34], XXXXXXXXh <--- HealthXorKey7
+    mov     [rbp+var_30], XXXXXXXXh <--- HealthXorKey8
+    mov     [rbp+var_2C], XXXXXXXXh <--- HealthXorKey9
+    mov     [rbp+var_28], XXXXXXXXh <--- HealthXorKey10
+    mov     [rbp+var_24], XXXXXXXXh <--- HealthXorKey11
+    mov     [rbp+var_20], XXXXXXXXh <--- HealthXorKey12
+    mov     [rbp+var_1C], XXXXXXXXh <--- HealthXorKey13
+    mov     [rbp+var_18], XXXXXXXXh <--- HealthXorKey14
+    mov     [rbp+var_14], XXXXXXXXh <--- HealthXorKey15
+     
+     
+    DecryptCIndex SIG 48 8B 44 24 ? 49 89 02 41 8B 41 24 8B C8 41 8B 51 28 81 F1 ? ? ? ?
+     
+    //PseudoCode
+     
+    _QWORD *__fastcall sub_7FF613C0FA40(_QWORD *a1, __int64 a2)
+    {
+      __int64 v2; // rax
+      _QWORD *v3; // r10
+      __int64 v4; // r9
+      __int64 v6; // [rsp+30h] [rbp+8h]
+     
+      *a1 = 0LL;
+      a1[1] = 0LL;
+      a1[2] = a2;
+      v2 = sub_7FF613BF017C(a2);
+      LODWORD(v6) = (*(_DWORD *)(v2 + 0x24) << 6) & 0xFFFF0000 ^ __ROR4__(*(_DWORD *)(v2 + 0x24) ^ 0x5D248F36, 0xA) ^ 0xE515B707;
+      HIDWORD(v6) = ((*(_DWORD *)(v2 + 0x28) & 0xFFFFFFC0) << 10) ^ __ROR4__(*(_DWORD *)(v2 + 0x28) ^ 0xE8ADE1A8, 6) ^ 0x7DE52F9B;
+      *v3 = v6;
+      LODWORD(v6) = (*(_DWORD *)(v4 + 0x24) << 6) & 0xFFFF0000 ^ __ROR4__(*(_DWORD *)(v4 + 0x24) ^ 0x5D248F36, 0xA) ^ 0xE515B707;
+      HIDWORD(v6) = ((*(_DWORD *)(v4 + 0x28) & 0xFFFFFFC0) << 10) ^ __ROR4__(*(_DWORD *)(v4 + 0x28) ^ 0xE8ADE1A8, 6) ^ 0x7DE52F9B;
+      v3[1] = v6;
+      return v3;
+    }
+     
+    uint32_t Offset = 0x24;
+    	
+    DWORD DecryptCIndex(DWORD value)
+    {
+        return  ((value) << 6) & 0xFFFF0000 ^ __ROR4__((value) ^ 0x5D248F36, 10) ^ 0xE515B707;
+     
+    }

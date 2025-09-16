@@ -2,16 +2,8 @@
 //The offset has not been tested, if there is an error please let me know.
 constexpr uint64_t XenuineDecrypt = 0xF37DA28;
 constexpr uint64_t GWorld = 0x10C1DE98;
-constexpr uint64_t Names = 0x10E63E10;
-constexpr uint64_t NamesOffset = 0x0000;
-constexpr uint64_t ElementsPerChunk = 0x40AC;
- 
-constexpr uint64_t Ror = 0x1;
-constexpr uint64_t rval = 0x0006;
-constexpr uint64_t sval = 0x000A;
-constexpr uint64_t offset = 0x24;
-constexpr uint64_t xor_key_1 = 0x5D248F36;
-constexpr uint64_t xor_key_2 = 0xAC36B707;
+constexpr uint64_t GNames = 0x10E63E10;
+constexpr uint64_t GNames2 = 0x0000;
  
 constexpr uint64_t GameInstance = 0x1A0;
 constexpr uint64_t LocalPlayers = 0xD0;

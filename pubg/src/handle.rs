@@ -85,7 +85,237 @@ pub struct PubgHandle {
     pub ke_interface: DriverInterface,
 }
 
+struct ModRmInfo {
+    mode: u8,
+    rm: u8,
+    rex_b: bool,
+    disp: u64,
+    has_disp: bool,
+    rip_relative: bool,
+}
+
 impl PubgHandle {
+    fn dump_matched_bytes(&self, signature: &Signature, inst_offset: u64) {
+        let match_len = signature.pattern.length();
+        if match_len == 0 {
+            return;
+        }
+        let mut match_buf = vec![0u8; match_len];
+        if let Err(err) = self.ke_interface.read_slice(
+            self.process_id,
+            DirectoryTableType::Default,
+            inst_offset,
+            &mut match_buf,
+        ) {
+            log::debug!(
+                "failed to read matched bytes for '{}' at {:#x}: {}",
+                signature.debug_name,
+                inst_offset,
+                err
+            );
+            return;
+        }
+        let hex = match_buf
+            .iter()
+            .map(|b| format!("{:02X}", b))
+            .collect::<Vec<_>>()
+            .join(" ");
+        log::debug!("matched bytes for '{}': {}", signature.debug_name, hex);
+    }
+    fn read_modrm_based_displacement(&self, inst_offset: u64) -> anyhow::Result<u64> {
+        // Read enough bytes for REX + opcode + ModRM + optional SIB + disp32
+        let mut buf = [0u8; 16];
+        self.ke_interface.read_slice(
+            self.process_id,
+            DirectoryTableType::Default,
+            inst_offset,
+            &mut buf,
+        )?;
+
+        // Assume single REX prefix at inst_offset as in our patterns
+        let mut idx = 0usize;
+        let rex = buf[idx];
+        if rex < 0x40 || rex > 0x4F {
+            // No REX prefix; treat current byte as opcode
+        } else {
+            idx += 1;
+        }
+
+        if idx >= buf.len() {
+            anyhow::bail!("decode: truncated before opcode")
+        }
+        let opcode = buf[idx];
+        idx += 1;
+        // We only support MOV r64, r/m64 (0x8B) style for offsets
+        if opcode != 0x8B {
+            anyhow::bail!(
+                "decode: unsupported opcode {:02X} at {:#x}",
+                opcode,
+                inst_offset + (idx as u64 - 1)
+            );
+        }
+
+        if idx >= buf.len() {
+            anyhow::bail!("decode: truncated before ModRM")
+        }
+        let modrm = buf[idx];
+        idx += 1;
+        let mode = (modrm & 0xC0) >> 6; // 00,01,10,11
+        let rm = modrm & 0x07;
+
+        // Optional SIB byte when r/m == 100
+        if rm == 0b100 {
+            // SIB present
+            if idx >= buf.len() {
+                anyhow::bail!("decode: truncated before SIB")
+            }
+            let _sib = buf[idx];
+            idx += 1;
+        }
+
+        let disp_size: usize = match mode {
+            0b01 => 1, // disp8
+            0b10 => 4, // disp32
+            0b00 => {
+                // No displacement (except RIP-relative when rm==101, but that's not a struct offset)
+                0
+            }
+            _ => 0, // register-direct, no displacement
+        };
+
+        if disp_size == 0 {
+            return Ok(0);
+        }
+
+        if idx + disp_size > buf.len() {
+            anyhow::bail!("decode: truncated displacement")
+        }
+        let disp = match disp_size {
+            1 => buf[idx] as u64,
+            4 => {
+                let b = &buf[idx..idx + 4];
+                u32::from_le_bytes([b[0], b[1], b[2], b[3]]) as u64
+            }
+            _ => 0,
+        };
+
+        Ok(disp)
+    }
+
+    fn decode_modrm_info(&self, inst_offset: u64) -> anyhow::Result<ModRmInfo> {
+        let mut buf = [0u8; 16];
+        self.ke_interface.read_slice(
+            self.process_id,
+            DirectoryTableType::Default,
+            inst_offset,
+            &mut buf,
+        )?;
+
+        let mut idx = 0usize;
+        let mut rex_b = false;
+        if (0x40..=0x4F).contains(&buf[idx]) {
+            let rex = buf[idx];
+            rex_b = (rex & 0x01) != 0;
+            idx += 1;
+        }
+        if idx >= buf.len() {
+            anyhow::bail!("decode: truncated before opcode")
+        }
+        let opcode = buf[idx];
+        idx += 1;
+        if opcode != 0x8B {
+            anyhow::bail!("decode: unsupported opcode {:02X}", opcode);
+        }
+        if idx >= buf.len() {
+            anyhow::bail!("decode: truncated before ModRM")
+        }
+        let modrm = buf[idx];
+        idx += 1;
+        let mode = (modrm & 0xC0) >> 6;
+        let rm = modrm & 0x07;
+        if rm == 0b100 {
+            // SIB present (ignored here)
+            if idx >= buf.len() {
+                anyhow::bail!("decode: truncated before SIB")
+            }
+            idx += 1;
+        }
+        let (has_disp, disp_size) = match mode {
+            0b01 => (true, 1usize),
+            0b10 => (true, 4usize),
+            0b00 => (false, 0usize),
+            _ => (false, 0usize),
+        };
+        let mut disp = 0u64;
+        if has_disp {
+            if idx + disp_size > buf.len() {
+                anyhow::bail!("decode: truncated displacement")
+            }
+            if disp_size == 1 {
+                disp = buf[idx] as u64;
+            } else {
+                let b = &buf[idx..idx + 4];
+                disp = u32::from_le_bytes([b[0], b[1], b[2], b[3]]) as u64;
+            }
+        }
+        let rip_relative = mode == 0 && rm == 0b101;
+        Ok(ModRmInfo {
+            mode,
+            rm,
+            rex_b,
+            disp,
+            has_disp,
+            rip_relative,
+        })
+    }
+
+    pub fn resolve_signature_struct_offset_resilient(
+        &self,
+        module: Module,
+        signature: &Signature,
+        require_rax_base: bool,
+        select_last: bool,
+    ) -> anyhow::Result<Option<u64>> {
+        let module_info = self.get_module_info(module).with_context(|| {
+            format!("{} {}", obfstr!("missing module"), module.get_module_name())
+        })?;
+        let mut cursor = module_info.base_address;
+        let end = module_info.base_address + module_info.module_size as u64;
+        let mut found_value: Option<u64> = None;
+        while cursor < end {
+            let length = (end - cursor) as usize;
+            let Some(inst_offset) =
+                self.find_pattern_resilient(cursor, length, &*signature.pattern)?
+            else {
+                break;
+            };
+            // Validate instruction
+            let ok = match self.decode_modrm_info(inst_offset) {
+                Ok(info) => {
+                    if info.rip_relative || !info.has_disp {
+                        false
+                    } else if require_rax_base {
+                        info.rm == 0 && !info.rex_b
+                    } else {
+                        true
+                    }
+                }
+                Err(_) => false,
+            };
+            if ok {
+                let info = self.decode_modrm_info(inst_offset).ok();
+                if let Some(info) = info {
+                    if select_last {
+                        found_value = Some(info.disp);
+                    } else {
+                        return Ok(Some(info.disp));
+                    }
+                }
+            }
+            cursor = inst_offset + 1;
+        }
+        Ok(found_value)
+    }
     pub fn create(metrics: bool) -> anyhow::Result<Arc<Self>> {
         let interface = DriverInterface::create_from_env()?;
 
@@ -282,18 +512,167 @@ impl PubgHandle {
         Ok(None)
     }
 
+    /// Like find_pattern but skips pages/chunks that cannot be read (e.g., paged out).
+    /// Scans in chunks with overlap so matches spanning chunk boundaries are still found.
+    pub fn find_pattern_resilient(
+        &self,
+        address: u64,
+        length: usize,
+        pattern: &dyn SearchPattern,
+    ) -> anyhow::Result<Option<u64>> {
+        if pattern.length() > length {
+            return Ok(None);
+        }
+
+        const CHUNK_SIZE: usize = 0x10000; // 64 KiB chunks
+        let overlap = pattern.length().saturating_sub(1);
+        let mut prev_tail: Vec<u8> = Vec::new();
+
+        let mut processed: usize = 0;
+        while processed < length {
+            let to_read = CHUNK_SIZE.min(length - processed);
+            let mut chunk = vec![0u8; to_read];
+            let read_addr = address + processed as u64;
+            match self.ke_interface.read_slice(
+                self.process_id,
+                DirectoryTableType::Default,
+                read_addr,
+                &mut chunk,
+            ) {
+                Ok(()) => {
+                    // build scan buffer with overlap from previous chunk
+                    let mut scan_buf = Vec::with_capacity(prev_tail.len() + chunk.len());
+                    scan_buf.extend_from_slice(&prev_tail);
+                    scan_buf.extend_from_slice(&chunk);
+
+                    for (index, window) in scan_buf.windows(pattern.length()).enumerate() {
+                        if !pattern.is_matching(window) {
+                            continue;
+                        }
+                        let global_offset = (processed as isize - (prev_tail.len() as isize)
+                            + (index as isize)) as u64;
+                        return Ok(Some(address + global_offset));
+                    }
+
+                    // update prev tail for next overlap
+                    if overlap > 0 {
+                        let take = overlap.min(chunk.len());
+                        prev_tail.clear();
+                        prev_tail.extend_from_slice(&chunk[chunk.len() - take..]);
+                    } else {
+                        prev_tail.clear();
+                    }
+                }
+                Err(_err) => {
+                    // Skip unreadable region (likely paged out). Reset overlap continuity.
+                    prev_tail.clear();
+                }
+            }
+
+            processed += to_read;
+        }
+
+        Ok(None)
+    }
+
+    /// Resilient scan that returns the last match in the given range, skipping unreadable pages.
+    pub fn find_pattern_resilient_last(
+        &self,
+        address: u64,
+        length: usize,
+        pattern: &dyn SearchPattern,
+    ) -> anyhow::Result<Option<u64>> {
+        if pattern.length() > length {
+            return Ok(None);
+        }
+
+        const CHUNK_SIZE: usize = 0x10000; // 64 KiB chunks
+        let overlap = pattern.length().saturating_sub(1);
+        let mut prev_tail: Vec<u8> = Vec::new();
+
+        let mut processed: usize = 0;
+        let mut last_match: Option<u64> = None;
+        while processed < length {
+            let to_read = CHUNK_SIZE.min(length - processed);
+            let mut chunk = vec![0u8; to_read];
+            let read_addr = address + processed as u64;
+            match self.ke_interface.read_slice(
+                self.process_id,
+                DirectoryTableType::Default,
+                read_addr,
+                &mut chunk,
+            ) {
+                Ok(()) => {
+                    let mut scan_buf = Vec::with_capacity(prev_tail.len() + chunk.len());
+                    scan_buf.extend_from_slice(&prev_tail);
+                    scan_buf.extend_from_slice(&chunk);
+
+                    for (index, window) in scan_buf.windows(pattern.length()).enumerate() {
+                        if !pattern.is_matching(window) {
+                            continue;
+                        }
+                        let global_offset = (processed as isize - (prev_tail.len() as isize)
+                            + (index as isize)) as u64;
+                        last_match = Some(address + global_offset);
+                    }
+
+                    if overlap > 0 {
+                        let take = overlap.min(chunk.len());
+                        prev_tail.clear();
+                        prev_tail.extend_from_slice(&chunk[chunk.len() - take..]);
+                    } else {
+                        prev_tail.clear();
+                    }
+                }
+                Err(_err) => {
+                    prev_tail.clear();
+                }
+            }
+
+            processed += to_read;
+        }
+
+        Ok(last_match)
+    }
+
     pub fn resolve_signature(&self, module: Module, signature: &Signature) -> anyhow::Result<u64> {
         log::trace!("Resolving '{}' in {:?}", signature.debug_name, module);
         let module_info = self.get_module_info(module).with_context(|| {
             format!("{} {}", obfstr!("missing module"), module.get_module_name())
         })?;
+        log::debug!(
+            "resolve_signature '{}' module base={:#x} size={:#x}",
+            signature.debug_name,
+            module_info.base_address,
+            module_info.module_size
+        );
+
+        let search_start = module_info.base_address;
+        let search_end = module_info.base_address + module_info.module_size;
+        let pattern_len = signature.pattern.length();
+        log::debug!(
+            "searching pattern len {} in [{:#x}..{:#x})",
+            pattern_len,
+            search_start,
+            search_end
+        );
 
         let inst_offset = self
             .find_pattern(
                 module_info.base_address,
                 module_info.module_size as usize,
                 &*signature.pattern,
-            )?
+            )
+            .map_err(|err| {
+                log::error!(
+                    "pattern search failed for '{}' in [{:#x}..{:#x}): {}",
+                    signature.debug_name,
+                    search_start,
+                    search_end,
+                    err
+                );
+                err
+            })?
             .with_context(|| {
                 format!(
                     "{} {}",
@@ -301,12 +680,41 @@ impl PubgHandle {
                     signature.debug_name
                 )
             })?;
+        log::debug!(
+            "pattern '{}' found at inst_offset={:#x} (RVA {:#x})",
+            signature.debug_name,
+            inst_offset,
+            self.module_address(module, inst_offset).unwrap_or(u64::MAX)
+        );
 
-        let value = u32::read_object(&*self.create_memory_view(), inst_offset + signature.offset)
-            .map_err(|err| anyhow::anyhow!("{}", err))? as u64;
+        self.dump_matched_bytes(signature, inst_offset);
+
+        let read_addr = inst_offset + signature.offset;
+        log::debug!(
+            "reading u32 for '{}' at {:#x} (inst_offset {:#x} + offset {:#x})",
+            signature.debug_name,
+            read_addr,
+            inst_offset,
+            signature.offset
+        );
+        let value_raw = u32::read_object(&*self.create_memory_view(), read_addr).map_err(|err| {
+            anyhow::anyhow!(
+                "reading u32 at {:#x} for '{}' failed: {}",
+                read_addr,
+                signature.debug_name,
+                err
+            )
+        })? as u64;
         let value = match &signature.value_type {
-            SignatureType::Offset => value,
-            SignatureType::RelativeAddress { inst_length } => inst_offset + value + inst_length,
+            SignatureType::Offset => {
+                // Some patterns indicate MOV r64, [r/m64 + disp], so the field offset is ModRM displacement.
+                // Try to decode ModRM-based disp and prefer it if non-zero and sane.
+                match self.read_modrm_based_displacement(inst_offset) {
+                    Ok(disp) if disp != 0 && disp < 0x10000 => disp,
+                    _ => value_raw,
+                }
+            }
+            SignatureType::RelativeAddress { inst_length } => inst_offset + value_raw + inst_length,
         };
 
         match &signature.value_type {
@@ -323,6 +731,101 @@ impl PubgHandle {
         }
 
         Ok(value)
+    }
+
+    /// Resolve a signature while skipping unreadable pages during the pattern search.
+    /// Returns Ok(None) if the pattern cannot be found.
+    pub fn resolve_signature_resilient(
+        &self,
+        module: Module,
+        signature: &Signature,
+    ) -> anyhow::Result<Option<u64>> {
+        log::trace!(
+            "Resolving (resilient) '{}' in {:?}",
+            signature.debug_name,
+            module
+        );
+        let module_info = self.get_module_info(module).with_context(|| {
+            format!("{} {}", obfstr!("missing module"), module.get_module_name())
+        })?;
+
+        let inst_offset = match self.find_pattern_resilient(
+            module_info.base_address,
+            module_info.module_size as usize,
+            &*signature.pattern,
+        )? {
+            Some(off) => off,
+            None => return Ok(None),
+        };
+
+        self.dump_matched_bytes(signature, inst_offset);
+
+        let value = u32::read_object(&*self.create_memory_view(), inst_offset + signature.offset)
+            .map_err(|err| {
+                anyhow::anyhow!(
+                    "reading u32 at {:#x} for '{}' failed: {}",
+                    inst_offset + signature.offset,
+                    signature.debug_name,
+                    err
+                )
+            })? as u64;
+
+        let value = match &signature.value_type {
+            SignatureType::Offset => match self.read_modrm_based_displacement(inst_offset) {
+                Ok(disp) if disp != 0 && disp < 0x10000 => disp,
+                _ => value,
+            },
+            SignatureType::RelativeAddress { inst_length } => inst_offset + value + inst_length,
+        };
+
+        Ok(Some(value))
+    }
+
+    /// Resolve a signature using last occurrence of the pattern, while skipping unreadable pages.
+    pub fn resolve_signature_resilient_last(
+        &self,
+        module: Module,
+        signature: &Signature,
+    ) -> anyhow::Result<Option<u64>> {
+        log::trace!(
+            "Resolving (resilient last) '{}' in {:?}",
+            signature.debug_name,
+            module
+        );
+        let module_info = self.get_module_info(module).with_context(|| {
+            format!("{} {}", obfstr!("missing module"), module.get_module_name())
+        })?;
+
+        let inst_offset = match self.find_pattern_resilient_last(
+            module_info.base_address,
+            module_info.module_size as usize,
+            &*signature.pattern,
+        )? {
+            Some(off) => off,
+            None => return Ok(None),
+        };
+
+        self.dump_matched_bytes(signature, inst_offset);
+
+        let value = u32::read_object(&*self.create_memory_view(), inst_offset + signature.offset)
+            .map_err(|err| {
+                anyhow::anyhow!(
+                    "reading u32 at {:#x} for '{}' failed: {}",
+                    inst_offset + signature.offset,
+                    signature.debug_name,
+                    err
+                )
+            })? as u64;
+
+        let value = match &signature.value_type {
+            SignatureType::Offset => match self.read_modrm_based_displacement(inst_offset) {
+                Ok(disp) if disp != 0 && disp < 0x10000 => disp,
+                _ => value,
+            },
+            SignatureType::RelativeAddress { inst_length } => inst_offset + value + inst_length,
+        };
+
+        Ok(Some(value))
     }
 }
 
