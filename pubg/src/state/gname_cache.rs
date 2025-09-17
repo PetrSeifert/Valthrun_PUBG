@@ -19,9 +19,8 @@ use crate::{
     StatePubgMemory,
 };
 
-pub const G_NAMES_OFFSET: u64 = 0x10E63E10; // Names
-pub const ELEMENTS_PER_CHUNK: u64 = 0x40AC; // ElementsPerChunk
-pub const G_NAMES_OFFSET2: u64 = 0x0; // NamesOffset
+pub const G_NAMES_OFFSET: u64 = 0x10B56A90; // Names
+pub const ELEMENTS_PER_CHUNK: u64 = 0x41BC; // ElementsPerChunk
 
 pub struct StateGNameCache {
     cache: HashMap<u32, String>,
@@ -76,7 +75,7 @@ impl StateGNameCache {
                             pubg_handle.memory_address(Module::Game, G_NAMES_OFFSET)?,
                         )
                         .map_err(|err| anyhow::anyhow!("{}", err))?,
-                    ) + G_NAMES_OFFSET2,
+                    ),
                 )
                 .map_err(|err| anyhow::anyhow!("{}", err))?,
             );

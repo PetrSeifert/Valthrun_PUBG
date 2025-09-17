@@ -63,7 +63,7 @@ impl StatePlayerInfo {
         0x6B099E38, 0xE7D22A2B,
     ];
 
-    const HEALTH4: u32 = 0x0A30; // Health4
+    const HEALTH4: u32 = 0x0980; // Health4
 
     pub fn decrypt_player_health(value: &mut [u8], offset: u32) {
         let xor_keys = unsafe {

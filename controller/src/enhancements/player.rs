@@ -70,8 +70,10 @@ impl PlayerSpyer {
             })?;
 
             if player_info.physics_state == 4 {
+                log::info!("Skipped");
                 continue;
             }
+            log::info!("physics_state: {:?}", player_info.physics_state);
 
             if player_info.health < 1 || player_info.health > 100 {
                 continue;

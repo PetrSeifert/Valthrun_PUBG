@@ -1,32 +1,30 @@
-//Version 37.2.1.81
-//The offset has not been tested, if there is an error please let me know.
-constexpr uint64_t XenuineDecrypt = 0xF37DA28;
-constexpr uint64_t GWorld = 0x10C1DE98;
-constexpr uint64_t GNames = 0x10E63E10;
-constexpr uint64_t GNames2 = 0x0000;
+//Version 37.2.1.85
+constexpr uint64_t XenuineDecrypt = 0x0F2F5F28;
+constexpr uint64_t GWorld = 0x10910A98;
+constexpr uint64_t Names = 0x10B56A90;
  
-constexpr uint64_t GameInstance = 0x1A0;
-constexpr uint64_t LocalPlayers = 0xD0;
-constexpr uint64_t Actors = 0x1D0;
-constexpr uint64_t ComponentLocation = 0x240;
-constexpr uint64_t CurrentLevel = 0x50;
-constexpr uint64_t PlayerController = 0x38;
-constexpr uint64_t PlayerCameraManager = 0x4E0;
-constexpr uint64_t CameraPos = 0xA80;
-constexpr uint64_t CameraRot = 0xAA8;
-constexpr uint64_t RootComponent = 0x318;
-constexpr uint64_t Mesh = 0x580;
-constexpr uint64_t Health = 0xA30;
-constexpr uint64_t LastTeamNum = 0x10D0;
-constexpr uint64_t bAlwaysCreatePhysicsState = 0x498;
+constexpr uint64_t GameInstance = 0x868;
+constexpr uint64_t LocalPlayers = 0xF0;
+constexpr uint64_t Actors = 0x01E0;
+constexpr uint64_t ComponentLocation = 0x02F0;
+constexpr uint64_t CurrentLevel = 0x0110;
+constexpr uint64_t PlayerController = 0x30;
+constexpr uint64_t PlayerCameraManager = 0x04C0;
+constexpr uint64_t CameraPos = 0x1014;
+constexpr uint64_t CameraRot = 0x15A0;
+constexpr uint64_t RootComponent = 0x0028;
+constexpr uint64_t Mesh = 0x480;
+constexpr uint64_t Health = 0x980;
+constexpr uint64_t LastTeamNum = 0x1CA0;
+constexpr uint64_t bAlwaysCreatePhysicsState = 0x488;
  
-constexpr uint64_t Health0 = 0x1C8;
-constexpr uint64_t Health1 = 0xA50;
-constexpr uint64_t Health2 = 0xA64;
-constexpr uint64_t Health3 = 0xA44;
-constexpr uint64_t Health4 = 0xA30;
-constexpr uint64_t Health5 = 0xA45;
-constexpr uint64_t Health6 = 0xA40;
+constexpr uint64_t Health0 = 0x350;
+constexpr uint64_t Health1 = 0x970;
+constexpr uint64_t Health2 = 0xA40;
+constexpr uint64_t Health3 = 0x994;
+constexpr uint64_t Health4 = 0x980;
+constexpr uint64_t Health5 = 0x995;
+constexpr uint64_t Health6 = 0x990;
  
 constexpr uint64_t HealthXorKeys0 = 0xCEC7A59A;
 constexpr uint64_t HealthXorKeys1 = 0x9B63B2F1;
